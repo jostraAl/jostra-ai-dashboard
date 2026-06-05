@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jostra AI Trading Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            margin: 20px auto;
+            width: 300px;
+            border-radius: 12px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            background: #22c55e;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .signal {
+            font-size: 24px;
+            margin-top: 15px;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚀 Jostra AI Trading Engine</h1>
+    <p>Over/Under & Rise/Fall Signal Dashboard</p>
+
+    <div class="card">
+        <h3>Live Signal Generator</h3>
+        <button onclick="generateSignal()">Get Signal</button>
+        <div id="result" class="signal">Waiting...</div>
+    </div>
+
+    <script>
+        function generateSignal() {
+            const signals = ["OVER 1", "OVER 2", "UNDER 7", "UNDER 8", "OVER 3"];
+            const random = signals[Math.floor(Math.random() * signals.length)];
+            document.getElementById("result").innerText = random;
+        }
+    </script>
+
+</body>
+  </html>
