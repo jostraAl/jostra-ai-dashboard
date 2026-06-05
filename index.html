@@ -1,60 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Jostra AI Trading Dashboard</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #0f172a;
-            color: white;
-            text-align: center;
-            padding: 30px;
-        }
+<meta charset="UTF-8">
+<title>Jostra AI Pro Trading Dashboard</title>
 
-        .card {
-            background: #1e293b;
-            padding: 20px;
-            margin: 20px auto;
-            width: 300px;
-            border-radius: 12px;
-        }
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+    padding: 15px;
+}
 
-        button {
-            padding: 10px 20px;
-            border: none;
-            background: #22c55e;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
+h1 {
+    color: #38bdf8;
+}
 
-        .signal {
-            font-size: 24px;
-            margin-top: 15px;
-            color: #38bdf8;
-        }
-    </style>
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 10px;
+}
+
+.card {
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+.signal {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.good { color: #22c55e; }
+.bad { color: #ef4444; }
+.warn { color: #facc15; }
+</style>
 </head>
+
 <body>
 
-    <h1>🚀 Jostra AI Trading Engine</h1>
-    <p>Over/Under & Rise/Fall Signal Dashboard</p>
+<h1>🚀 Jostra AI Pro Dashboard</h1>
 
-    <div class="card">
-        <h3>Live Signal Generator</h3>
-        <button onclick="generateSignal()">Get Signal</button>
-        <div id="result" class="signal">Waiting...</div>
-    </div>
+<div class="grid">
 
-    <script>
-        function generateSignal() {
-            const signals = ["OVER 1", "OVER 2", "UNDER 7", "UNDER 8", "OVER 3"];
-            const random = signals[Math.floor(Math.random() * signals.length)];
-            document.getElementById("result").innerText = random;
+<div class="card">
+<h3>Scanner</h3>
+<div id="scanner">Loading...</div>
+</div>
+
+<div class="card">
+<h3>Best Signal</h3>
+<div id="signal" class="signal warn">WAITING</div>
+</div>
+
+<div class="card">
+<h3>AI Score</h3>
+<div id="score">0</div>
+</div>
+
+<div class="card">
+<h3>Status</h3>
+<div id="status">---</div>
+</div>
+
+<div class="card">
+<h3>History</h3>
+<div id="history">---</div>
+</div>
+
+</div>
+
+<script>
+const markets = [
+    { name: "R_10", label: "Volatility 10" },
+    { name: "R_25", label: "Volatility 25" },
+    { name: "R_50", label: "Volatility 50" },
+    { name: "R_100", label: "Volatility 100" }
+];
+
+let marketData = {};
+let history = [];
+
+function connectMarket(market) {
+    const ws = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
+
+    ws.onopen = () => {
+        ws.send(JSON.stringify({
+            ticks: market.name,
+            subscribe: 1
+        }));
+    };
+
+    ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (!data.tick) return;
+
+        let price = data.tick.quote;
+        let digit = parseInt(price.toString().slice(-1));
+
+        if (!marketData[market.name]) {
+            marketData[market.name] = [];
         }
-    </script>
+
+        marketData[market.name].push(digit);
+
+        if (marketData[market.name].length > 20) {
+            marketData[market.name].shift();
+        }
+    };
+}
+
+// connect all markets
+markets.forEach(connectMarket);
+
+// --------------------
+// MAIN SCANNER (15s)
+// --------------------
+setInterval(() => {
+
+    let best = null;
+
+    for (let m of markets) {
+
+        let data = marketData[m.name];
+        if (!data || data.length < 10) continue;
+
+        let over = data.filter(d => d >= 5).length;
+        let under = data.filter(d => d < 5).length;
+
+        let score = 50;
+
+        let imbalance = Math.abs(over - under);
+        score += imbalance * 3;
+
+        if (over > under) score += 15;
+        if (under > over) score += 15;
+
+        // fake filter
+        let fake = false;
+
+        if (imbalance < 2) fake = true;
+        if (data.length < 15) fake = true;
+
+        let direction = over > under ? "OVER 📈" : "UNDER 📉";
+
+        if (fake) {
+            direction = "NO TRADE ⚠️";
+            score *= 0.6;
+        }
+
+        if (score > 100) score = 100;
+
+        if (!best || score > best.score) {
+            best = {
+                market: m.label,
+                direction,
+                score: score.toFixed(0),
+                fake
+            };
+        }
+    }
+
+    // OUTPUT
+    if (best) {
+
+        let status = best.fake ? "WEAK / FILTERED" : "VALID SETUP";
+
+        document.getElementById("scanner").innerText =
+            "Best Market: " + best.market;
+
+        document.getElementById("signal").innerText =
+            best.direction;
+
+        document.getElementById("score").innerText =
+            best.score + "/100";
+
+        document.getElementById("status").innerText =
+            status;
+
+        // history
+        history.unshift(best.direction + " (" + best.score + ")");
+        if (history.length > 6) history.pop();
+
+        document.getElementById("history").innerText =
+            history.join(" | ");
+    }
+
+}, 15000);
+</script>
 
 </body>
-  </html>
+</html>
